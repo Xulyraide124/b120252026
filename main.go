@@ -2,27 +2,39 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	// On définit la route racine "/" pour servir le fichier index.html
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	_ = godotenv.Load()
+
+	mux := http.NewServeMux()
+
+	// Dossier pour le CSS et les assets
+	fs := http.FileServer(http.Dir("static"))
+	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	// Route principale
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
 		http.ServeFile(w, r, "index.html")
 	})
 
-	// On récupère le port (utile pour ton Procfile plus tard)
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080" // Port par défaut en local
+		port = "8080"
 	}
 
-	fmt.Printf("Serveur lancé sur http://localhost:%s\n", port)
-
-	// Lancement du serveur
-	err := http.ListenAndServe(":"+port, nil)
+	fmt.Printf("🤘 Slayer Server running on port %s\n", port)
+	err := http.ListenAndServe(":"+port, mux)
 	if err != nil {
-		fmt.Println("Erreur lors du lancement :", err)
+		log.Fatal(err)
 	}
 }
